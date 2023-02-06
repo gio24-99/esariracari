@@ -1,0 +1,78 @@
+//txt ფაილის წაკითხვა:
+    val myrdd = sc.textFile("D://KeyWords.txt") //Line 1
+//json ფაილის წაკითხვა:
+    val bookDetails = spark.read.json("D://samplejson.json")
+//csv ფაილის წაკითხვა:
+    val bookDetails = spark.read.csv("D://addresses.csv")
+//    bookDetails.show()
+//    bookDetails.groupBy("Author").agg(sum("bookId")).show()
+/
+/
+/
+
+/
+/
+/
+/
+/
+
+// build.sbt ფაილში უნდა ჩავამატოთ:
+
+val sparkVersion = "3.3.0"
+val mysql = "mysql" % "mysql-connector-java" % "8.0.30"
+libraryDependencies ++= Seq(
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  "org.apache.spark" %% "spark-mllib" % sparkVersion,
+  "org.apache.spark" %% "spark-streaming" % sparkVersion
+)
+libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "3.3.0"
+
+
+// main ფაილი:
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.{SparkSession}
+import org.apache.spark.sql.functions.{sum, col, concat, current_timestamp,  from_json, lit, monotonically_increasing_id}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructType}
+
+
+object Main {
+
+  val conf = new SparkConf()
+    .setAppName("POC")
+    .setMaster("local[2]")
+    .set("spark.sql.streaming.checkpointLocation", "checkpoint")
+
+
+  def main(args: Array[String]): Unit = {
+    val sc = new SparkContext(conf)
+
+    val spark = SparkSession.builder.config(sc.getConf).getOrCreate()
+
+    spark.sparkContext.setLogLevel("ERROR")
+
+    val schema = new StructType()
+      .add("bookId", IntegerType, true)
+      .add("bookName", StringType, true)
+      .add("Author", StringType, true)
+    
+//  json ფაილის წაკითხვა წინასწარ განსაღვრული სქემით. 
+//  სქემის განსაზღვრის გარეშე შეგვიძლია პირდაპირ spark.read.json("D://samplejson.json")
+//    val employeeDetails = spark.read.schema(schema).json("D://samplejson.json")
+//    employeeDetails.show()
+
+//  txt ფაილის წაკითხვა წინასწარ განსაღვრული სქემით.
+//    val myrdd = sc.textFile("D://KeyWords.txt") //Line 1
+
+//  csv ფაილის წაკითხვა წინასწარ განსაღვრული სქემით.
+//    val bookDetails = spark.read.csv("D://addresses.csv")
+//    bookDetails.show()
+//    bookDetails.groupBy("Author").agg(sum("bookId")).show()
+
+
+// csv ფაილის წაკითხვა, space-ზე დასპლიტვა და თითოეული სიტყვის რაოდენობის დათვლა
+    val myArray=sc.textFile("d://KeyWords.txt").flatMap(line => line.split(" ")).
+      map(word => (word, 1)).reduceByKey(_ + _).collect()
+    myArray.foreach(println)
+  }
+}
